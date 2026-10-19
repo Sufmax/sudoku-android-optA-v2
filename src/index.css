@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ivory: #F3EEE3;
+  --color-paper: #FAF7F0;
+  --color-ink: #0A0A0B;
+  --color-violet: #6A2CFF;
+  --color-lime: #CBFF1F;
+  --color-alert: #FF3D1F;
+  --color-line: #DDD6C8;
+  --color-mute: #6F6A60;
+  --font-sans: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html { background: var(--color-ivory); color: var(--color-ink); -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-sans); }
+::selection { background: var(--color-lime); color: var(--color-ink); }
+
+/* Petits libellés en capitales espacées */
+.label { font-size: 11px; line-height: 1; letter-spacing: .18em; text-transform: uppercase; font-weight: 600; }
+
+/* Titres massifs : la typographie est l'élément graphique principal */
+.display { font-weight: 900; letter-spacing: -0.045em; line-height: .84; }
+
+/* Bouton principal : pilule noire, masse décalée violette (profondeur imprimée, sans ombre floue) */
+.btn {
+  display: inline-flex; align-items: center; gap: 14px; border-radius: 999px; border: 3px solid var(--color-ink);
+  font-weight: 800; font-size: 16px; padding: 12px 22px; cursor: pointer; user-select: none;
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out, background-color 80ms;
+}
+.btn-primary { background: var(--color-ink); color: #fff; box-shadow: 5px 5px 0 0 var(--color-violet); }
+.btn-primary:hover { transform: translate(-1px, -1px); box-shadow: 6px 6px 0 0 var(--color-violet); }
+.btn-primary:active { transform: translate(4px, 4px); box-shadow: 1px 1px 0 0 var(--color-violet); }
+.btn-ghost { background: transparent; color: var(--color-ink); }
+.btn-ghost:hover { background: var(--color-ink); color: var(--color-ivory); }
+.btn-ghost:active { transform: translate(2px, 2px); }
+.btn:disabled { opacity: .35; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* Grand contrôle circulaire : aplat vif, contour noir épais, masse noire décalée bas-droite */
+.orb {
+  position: relative; display: grid; place-items: center; border-radius: 999px; border: 3px solid var(--color-ink);
+  box-shadow: 8px 8px 0 0 var(--color-ink); cursor: pointer; user-select: none;
+  transition: transform 90ms ease-out, box-shadow 90ms ease-out;
+}
+.orb:hover { transform: translate(-1px, -1px); box-shadow: 9px 9px 0 0 var(--color-ink); }
+.orb:active { transform: translate(6px, 6px); box-shadow: 2px 2px 0 0 var(--color-ink); }
+.orb:disabled { cursor: not-allowed; opacity: .4; transform: none; box-shadow: 4px 4px 0 0 var(--color-ink); }
+
+.field {
+  width: 100%; background: transparent; border: 3px solid var(--color-ink); border-radius: 999px; padding: 11px 20px;
+  font-weight: 600; outline: none; transition: box-shadow 80ms;
+}
+.field:focus { box-shadow: 4px 4px 0 0 var(--color-violet); }
+
+.select-pill {
+  appearance: none; background: transparent; border: 3px solid var(--color-ink); border-radius: 999px;
+  padding: 12px 48px 12px 22px; font-weight: 800; font-size: 16px; cursor: pointer; outline: none;
+}
+.select-pill:focus { box-shadow: 4px 4px 0 0 var(--color-violet); }
+
+.scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: var(--color-ink); border-radius: 6px; }
+
+@keyframes blink { 50% { opacity: .2; } }
+.live-dot { animation: blink 1.2s steps(2, start) infinite; }

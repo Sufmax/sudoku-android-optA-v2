@@ -1,0 +1,259 @@
+# =============================================================================
+#  SUDOKU BOT — CONFIGURATION UNIQUE
+#  Rechargement à chaud : toutes les sections SAUF `emulator`, `adb.path`,
+#  `dashboard.url`, `machine` (redémarrage requis, signalé dans les logs).
+#  Les durées sont en millisecondes sauf suffixe _s (secondes).
+#  Les couples [moyenne, écart-type] sont tirés selon une loi normale bornée.
+# =============================================================================
+
+machine:
+  id: "csb-01"                    # surchargé par MACHINE_ID (.env)
+  version: "2.0.0"
+
+workflow:
+  # Après un réveil (relancement), faut-il démarrer seul si PRÊT avait été donné ?
+  auto_ready_on_resume: false
+  # Délai indicatif affiché pendant l'attente de PRÊT (s)
+  first_run_hint_s: 900
+  resume_hint_s: 120
+
+emulator:
+  # ---------------------------------------------------------------------------
+  # Recette ÉPROUVÉE sur CodeSandbox (dépôt android_emulator) : API 29 x86_64,
+  # SwiftShader, fenêtre dessinée sur Xvfb (JAMAIS -no-window) → x11vnc → noVNC.
+  # Sans /dev/kvm l'émulateur tourne en émulation logicielle (-accel off).
+  # Toute la section nécessite un redémarrage (./run.sh) pour être prise en compte.
+  # ---------------------------------------------------------------------------
+  backend: "auto"                 # auto (= avd) | avd | redroid | remote   (surchargé par ANDROID_BACKEND)
+  accel: "auto"                   # auto (KVM si /dev/kvm utilisable, sinon logiciel) | on | off
+  image_variant: "playstore"      # playstore : image Google Play native (google_apis_playstore)
+                                  # aurora    : image « default » (recette d'origine) + Aurora Store
+                                  # surchargé par IMAGE_VARIANT (.env)
+  image_fallback: true            # si l'image Play Store ne finit pas son 1er boot → bascule auto sur aurora
+  avd_name: "sudoku"              # nom réel de l'AVD : <avd_name>_<variante> (sudoku_playstore / sudoku_aurora)
+  api_level: 29                   # 29 = dernier niveau validé sans KVM sur CodeSandbox
+  abi: "x86_64"                   # x86_64 (défaut éprouvé) | x86 (plus léger, également validé)
+  device_profile: "pixel_4"
+  ram_mb: 4096                    # RAM invitée (hw.ramSize + -memory)
+  vm_heap_mb: 512
+  cores: 3                        # vCPU invités (sur 4) : 1 cœur reste au bot + OCR
+  data_partition: "6G"
+  width: 1080
+  height: 2340
+  density: 420
+  gpu: "swiftshader_indirect"
+  dns_servers: "8.8.8.8,8.8.4.4"  # DNS de l'invité (-dns-server) : indispensable pour le Play Store
+  boot_timeout_s: 1500            # boot à froid logiciel : 3 à 10 min (Play Store : jusqu'à 20 min au 1er boot)
+  quickboot: false                # true = sauvegarde un snapshot Quick Boot à l'arrêt propre (≈ RAM invitée sur disque)
+                                  # false = boot à froid (recette éprouvée) ; le compte Google et le jeu
+                                  # sont de toute façon conservés dans la partition data de l'AVD.
+  console_port: 5554              # → série ADB emulator-5554
+  checkpoint_snapshot: "bot_checkpoint"
+  snapshot_every_s: 0             # snapshot de reprise périodique (0 = jamais ; coûteux sans KVM)
+  remote_serial: "127.0.0.1:5555" # backend remote / redroid
+  redroid_image: "redroid/redroid:13.0.0_gapps"
+  game_package: "easy.sudoku.puzzle.solver.free"
+
+display:
+  # Écran virtuel + accès distant (phase de configuration manuelle). Redémarrage requis.
+  xvfb_display: ":1"
+  xvfb_screen: "1920x1080x24"     # résolution de l'écran X virtuel (la fenêtre de l'émulateur s'y adapte)
+  vnc_port: 5900                  # x11vnc, écoute en local uniquement
+  novnc_port: 6080                # websockify + noVNC, exposé en HTTPS par CodeSandbox
+  vnc_password: true              # protège noVNC par DASHBOARD_PASSWORD (8 premiers caractères, limite VNC)
+
+adb:
+  path: "adb"
+  serial: ""                      # vide = auto (emulator-5554 / remote_serial)
+  command_timeout_s: 10
+  screencap_mode: "raw"           # raw (rapide) | png
+  reconnect_attempts: 6
+  restart_emulator_after_failures: 3
+
+detection:
+  min_confidence_action: 0.75     # en dessous : on ne clique pas, on re-capture
+  grid:
+    sizes: [4, 6, 8, 9, 10, 12, 16]
+    min_width_frac: 0.45          # largeur minimale de la grille / largeur écran
+    squareness_tol: 0.12          # |1 - l/h| toléré
+    line_kernel_frac: 0.08        # longueur du noyau morphologique / largeur écran
+    adaptive_block_frac: 0.025
+    adaptive_c: 6
+    line_coverage_min: 0.55       # couverture minimale d'une ligne de la grille
+    lattice_tol: 0.2              # tolérance de position d'une ligne (fraction de case)
+    thick_ratio_min: 1.25         # rapport épaisse/fine minimal pour déduire les blocs
+    block_fallback: {"4": [2, 2], "6": [2, 3], "8": [2, 4], "9": [3, 3], "10": [2, 5], "12": [3, 4], "16": [4, 4]}
+  cells:
+    inset_frac: 0.10              # marge intérieure ignorée (traits de grille)
+    ink_delta: 70                 # distance couleur encre/fond
+    min_glyph_h_frac: 0.33        # hauteur minimale d'un chiffre / hauteur case (exclut les notes)
+    max_glyph_h_frac: 0.92
+    template_size: 32
+    digit_min_score: 0.70
+    digit_min_margin: 0.04
+    templates_per_symbol: 6
+  colors:                          # classification de la couleur d'encre (HSV OpenCV 0-180)
+    error_hue: [[0, 12], [165, 180]]
+    error_min_sat: 45             # rouge pâle inclus (chiffre en conflit)
+    error_min_val: 150            # un rouge doit être clair : évite de confondre avec un chiffre donné sombre
+    user_hue: [90, 135]
+    user_min_sat: 70
+    given_max_val: 140
+    given_max_sat: 80
+  keypad:
+    ink: "colored"                # colored | any
+    min_h_frac: 0.35              # hauteur glyphe / hauteur case de la grille
+    max_h_frac: 1.25
+    row_tol_frac: 0.35
+    regularity_tol: 0.25
+  overlay:
+    dim_value_max: 175            # luminosité médiane du fond de grille en dessous de laquelle un voile est présent
+    blob_area_frac: 0.06          # bulle saturée couvrant > x % de la grille = message transitoire
+
+ocr:
+  tesseract_path: "tesseract"
+  languages: "fra+eng"
+  psm: 11
+  dual_polarity: true            # OCR aussi sur l'image inversée (texte blanc sur bouton coloré)
+  min_word_conf: 40
+  match_ratio: 0.78
+  timeout_s: 12
+
+labels:                            # référencés dans `screens` par @nom
+  new_game: ["nouvelle partie", "new game"]
+  difficulty: ["debutant", "beginner"]
+  erase: ["effacer", "erase"]
+
+screens:                           # règles OCR, la priorité la plus haute gagne
+  - id: game_over
+    any: ["coup de genie", "nouveau meilleur temps", "meilleur temps hebdomadaire", "un jeu precis", "resolution elite"]
+    action: {type: tap_text, texts: ["@new_game"]}
+    priority: 80
+  - id: loss
+    any: ["partie terminee", "seconde chance", "game over", "vous avez perdu"]
+    action: {type: tap_text, texts: ["@new_game"]}
+    priority: 78
+  - id: rate_popup
+    any: ["aimez-vous le sudoku", "evaluez-nous", "rate us"]
+    action: {type: back}
+    priority: 90
+  - id: bonus_popup
+    any: ["bonus debutant", "reclamez votre recompense"]
+    action: {type: back}
+    priority: 90
+  - id: streak_flame
+    any: ["touchez la flamme", "enflammez votre serie"]
+    action: {type: tap_blob_above_text, texts: ["touchez la flamme"]}
+    priority: 88
+  - id: streak_summary
+    any: ["serie quotidienne", "votre constance"]
+    action: {type: tap_text, texts: ["retour", "back"]}
+    priority: 87
+  - id: well_done
+    any: ["bien joue", "parties consecutives"]
+    action: {type: tap_text, texts: ["ok"]}
+    priority: 86
+  - id: anr
+    any: ["ne repond pas", "isn't responding", "ne repond plus"]
+    action: {type: tap_text, texts: ["attendre", "wait"]}
+    priority: 99
+  - id: ad
+    any: ["publicite", "annonce", "sponsorise", "installer", "skip ad", "fermer l'annonce"]
+    action: {type: tap_text, texts: ["fermer", "ignorer", "skip", "close", "x"], fallback: back}
+    priority: 95
+  - id: difficulty                 # feuille de choix : plusieurs niveaux visibles simultanément
+    any: ["@difficulty"]
+    all: ["facile", "moyen"]
+    action: {type: tap_text, texts: ["@difficulty"]}
+    priority: 85
+  - id: home
+    any: ["sudoku classique", "@new_game"]
+    action: {type: tap_text, texts: ["@new_game"]}
+    priority: 50
+  - id: loading_tip
+    any: ["joueurs sont restes bloques", "astuce", "conseil"]
+    action: {type: wait}
+    priority: 40
+
+timing:
+  screen_poll_ms: 450
+  after_menu_tap_ms: [900, 250]
+  loading_timeout_s: 20
+  game_over_wait_ms: 1000
+  popup_wait_ms: [800, 200]
+  unknown_screen_retries: 6
+  max_action_retries: 4
+  relaunch_wait_s: 6
+
+human:
+  tap_sigma_frac: 0.15            # écart-type du point de contact / taille de la cible
+  tap_max_frac: 0.30              # écart max au centre / taille (reste dans la cible)
+  handedness_bias: [0.02, 0.03]   # léger biais droitier (x, y), appliqué AVANT bornage
+  press_ms: [40, 115]
+  micro_swipe_prob: 0.25
+  micro_swipe_frac: 0.03          # amplitude max du micro-glissement / taille cible
+  hesitation_prob: 0.04
+  hesitation_ms: [300, 1100]
+  long_pause_prob: 0.008
+  long_pause_ms: [1500, 4000]
+  move_order: "human"             # human | rows | random | box | digit
+
+waves:
+  min_wave: 1
+  fail_rate_shrink: 0.15          # taux d'échec d'une vague au-delà duquel on réduit
+  shrink_factor: 0.5
+  grow_factor: 1.25
+  clean_waves_to_grow: 2
+  max_corrections_per_cell: 3
+  cut_on_digit_complete: true    # garde-fou : recapture après tout coup qui complète un chiffre (pavé modifié)
+  correction: "overwrite"         # overwrite | erase_then_write
+
+speed:
+  mode: "adaptive"                # adaptive | very_slow | slow | medium | fast | very_fast
+  order: ["very_slow", "slow", "medium", "fast", "very_fast"]
+  tiers:
+    very_slow: {label: "Très lent", wave_size: 2,  cell_to_key_ms: [420, 120], between_moves_ms: [700, 200], jitter_frac: 0.25, settle_ms: 700, verify_reads: 2}
+    slow:      {label: "Lent",      wave_size: 4,  cell_to_key_ms: [300, 90],  between_moves_ms: [450, 140], jitter_frac: 0.22, settle_ms: 550, verify_reads: 2}
+    medium:    {label: "Moyen",     wave_size: 8,  cell_to_key_ms: [190, 60],  between_moves_ms: [280, 90],  jitter_frac: 0.2,  settle_ms: 420, verify_reads: 1}
+    fast:      {label: "Rapide",    wave_size: 14, cell_to_key_ms: [120, 40],  between_moves_ms: [170, 60],  jitter_frac: 0.18, settle_ms: 350, verify_reads: 1}
+    very_fast: {label: "Très rapide", wave_size: 24, cell_to_key_ms: [80, 25], between_moves_ms: [110, 40],  jitter_frac: 0.15, settle_ms: 300, verify_reads: 1}
+  adaptive:
+    start: "medium"
+    min: "very_slow"
+    max: "very_fast"
+    up_after_clean_waves: 3
+    down_fail_rate: 0.2
+    adb_latency_ok_ms: 90
+    adb_latency_bad_ms: 250
+    render_ok_ms: 700
+    render_bad_ms: 1800
+    cpu_load_max: 0.9             # loadavg(1 min) / nb vCPU
+    cooldown_waves: 2
+    ceiling_hold_s: 900           # durée d'interdiction de remonter au palier qui a échoué
+
+safety:
+  consensus_reads: 2              # lectures concordantes exigées avant résolution
+  max_rereads: 6
+  require_unique_solution: true
+  solver_timeout_s: 10
+  max_game_errors: 2              # erreurs (rouge) tolérées avant pause de sécurité de la partie
+  stuck_game_timeout_s: 600
+
+telemetry:
+  log_level: "INFO"
+  json_log_path: "var/logs/bot.jsonl"
+  json_log_max_mb: 20
+  stats_path: "var/state/stats.json"
+  save_failure_screens: true
+  failure_screens_dir: "var/failures"
+  failure_screens_max: 150
+
+dashboard:
+  enabled: true
+  url: ""                         # surchargé par DASHBOARD_URL (.env)
+  heartbeat_s: 5
+  backoff_initial_s: 1
+  backoff_max_s: 60
+  stream_fps: 0.5
+  stream_width: 360
+  stream_quality: 60

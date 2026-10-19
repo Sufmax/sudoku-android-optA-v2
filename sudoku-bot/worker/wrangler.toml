@@ -1,0 +1,29 @@
+# Cloudflare Worker « sudoku-hub » : authentification, Durable Object temps réel, dashboard statique.
+name = "sudoku-hub"
+main = "src/index.ts"
+compatibility_date = "2025-01-15"
+workers_dev = true
+
+# Le dashboard (React, construit par `npm run build` à la racine du dépôt) est servi
+# APRÈS contrôle d'authentification grâce à run_worker_first.
+[assets]
+directory = "../../dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = true
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "Hub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Hub"]
+
+[vars]
+SESSION_TTL_S = "604800"   # 7 jours
+MAX_LOGIN_ATTEMPTS = "10"  # par IP et par fenêtre de 15 min
+
+# Secrets (jamais dans ce fichier) :
+#   npx wrangler secret put DASHBOARD_PASSWORD
+#   npx wrangler secret put SESSION_SECRET      (optionnel, sinon dérivé du mot de passe)

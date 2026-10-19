@@ -1,0 +1,8 @@
+# Dépendances Python du bot (Python >= 3.10)
+numpy>=1.26,<3
+opencv-python-headless>=4.9
+pydantic>=2.6,<3
+PyYAML>=6.0
+websockets>=12.0
+pytest>=8.0
+pytest-asyncio>=0.23
