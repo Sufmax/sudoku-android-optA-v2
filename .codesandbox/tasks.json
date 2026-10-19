@@ -1,0 +1,43 @@
+{
+  "version": "0.1",
+  "tasks": {
+    "sudoku-bot": {
+      "name": "▶ Sudoku Bot (run.sh)",
+      "command": "bash sudoku-bot/run.sh",
+      "runAtStart": false,
+      "preview": {
+        "port": 6080,
+        "path": "/vnc_lite.html"
+      }
+    },
+    "ready": {
+      "name": "✔ PRÊT (démarre le bot)",
+      "command": "bash sudoku-bot/run.sh ready",
+      "runAtStart": false
+    },
+    "status": {
+      "name": "Statut émulateur + bot",
+      "command": "bash sudoku-bot/run.sh doctor",
+      "runAtStart": false
+    },
+    "emulator-logs": {
+      "name": "Logs émulateur (live)",
+      "command": "tail -n 200 -f sudoku-bot/var/logs/emulator.log",
+      "runAtStart": false
+    },
+    "bot-logs": {
+      "name": "Logs bot (live)",
+      "command": "bash sudoku-bot/run.sh logs",
+      "runAtStart": false
+    },
+    "restart-emulator": {
+      "name": "Redémarrer l'émulateur",
+      "command": "bash sudoku-bot/scripts/start_emulator.sh --restart",
+      "runAtStart": false,
+      "preview": {
+        "port": 6080,
+        "path": "/vnc_lite.html"
+      }
+    }
+  }
+}

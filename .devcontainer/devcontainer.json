@@ -1,0 +1,23 @@
+{
+  "name": "Sudoku Bot — Android Emulator (x86_64, SwiftShader, noVNC)",
+  "build": {
+    "context": ".",
+    "dockerfile": "Dockerfile"
+  },
+  "forwardPorts": [6080],
+  "portsAttributes": {
+    "6080": {
+      "label": "Écran Android (noVNC)",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "remoteEnv": {
+    "ANDROID_SDK_ROOT": "/opt/android-sdk",
+    "ANDROID_HOME": "/opt/android-sdk",
+    "DISPLAY": ":1",
+    "LIBGL_ALWAYS_SOFTWARE": "1"
+  },
+  "postCreateCommand": "chmod +x sudoku-bot/run.sh sudoku-bot/scripts/*.sh || true",
+  "remoteUser": "root",
+  "shutdownAction": "none"
+}
